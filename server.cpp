@@ -2,7 +2,7 @@
 // programming
 #include <netinet/in.h>
 #include <stdio.h>
-#include <stdlib.h>
+// #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -41,7 +41,8 @@ int main(int argc, char const* argv[])
 {
 
 	int time = 3600;
-
+	int timer_c = 1;
+	double recv_bytes = 0;
 	int server_fd, new_socket, valread;
 	struct sockaddr_in address;
 	int opt = 1;
@@ -93,6 +94,7 @@ int main(int argc, char const* argv[])
 	tv.tv_sec = timeout_in_seconds;
 	tv.tv_usec = 0;
 	setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+    auto start_time = chrono::steady_clock::now();
 
 
 
@@ -106,8 +108,19 @@ int main(int argc, char const* argv[])
 			cout << "connection timeout" << endl;
 			break;
 		}
-		printf("%s\n", buffer);
-		// send(new_socket, hello, strlen(hello), 0);
+		recv_bytes += valread;
+        auto now = chrono::steady_clock::now();
+		// printf("%s\n", buffer);
+		if (chrono::duration_cast<chrono::seconds>(now - start_time).count() > timer_c) {
+			if (recv_bytes <= 1024*1024) {
+				printf("[%d-%d]\t%g kbps\n", timer_c, timer_c+1, recv_bytes/1024*8);
+			}
+			else {
+				printf("[%d-%d]\t%g Mbps\n", timer_c, timer_c+1, recv_bytes/1024/1024*8);
+			}
+			recv_bytes = 0;
+			timer_c += 1;
+		}
 	}
 	cout << "finish\n";
 	return 0;

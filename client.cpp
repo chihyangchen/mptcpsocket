@@ -102,18 +102,31 @@ int main(int argc, char const* argv[])
     auto ts = timeSinceEpochMillisec();
     string redundent = gen_random(packet_length-16-32);
     
-
+    int count_packet = 0;
+    int count_time = 1;
     auto start_time = chrono::steady_clock::now();
+    cout << "sleep time " << sleeptime << endl;
     do {
         now = chrono::steady_clock::now();
         ts = timeSinceEpochMillisec();
-        sprintf(send_buf, "%32lx%16x%s", ts, seq+1, redundent.c_str());
+        sprintf(send_buf, "%32lx%16x%s", ts, seq, redundent.c_str());
+        // printf("len: %d\n", strlen(send_buf));
         send(sock, send_buf, strlen(send_buf), 0);
         seq += 1;
-        this_thread::sleep_for(chrono::milliseconds((int) sleeptime * 1000));
+        count_packet += 1;
+        // this_thread::sleep_for(chrono::milliseconds((int) (sleeptime  * 1000)));
+        this_thread::sleep_for(chrono::milliseconds((int) (1000 * sleeptime)));
     // } while (seq  < 10);
+        if (chrono::duration_cast<chrono::seconds>(now - start_time).count() > count_time ) {
+            // printf("# packet: %d exp%g\n", count_packet, expected_packet_per_sec);
+            int tx_bytes = count_packet * packet_length;
+            printf("[%d-%d]\t%g kbps\n", count_time-1, count_time, 1.0*tx_bytes/1024*8);
+            count_packet = 0;
+            count_time += 1;
+        }
 
-    } while (chrono::duration_cast<chrono::seconds>(now - start_time).count() < 10);
+
+    } while (chrono::duration_cast<chrono::seconds>(now - start_time).count() < 3600);
 
     cout << "finish\n";
     close(sock);

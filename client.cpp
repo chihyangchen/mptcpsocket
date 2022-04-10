@@ -13,6 +13,7 @@
 #include <time.h>
 #include <iostream>
 #include <unistd.h>
+#include <netinet/tcp.h>
 
 #define PORT 3270
 
@@ -72,6 +73,15 @@ int main(int argc, char const* argv[])
         return -1;
     }
  
+    int enable = 1;
+    setsockopt(sock, SOL_TCP, 42, &enable, sizeof(int));
+
+    char scheduler[] = "redundant";
+    setsockopt(sock, SOL_TCP, 43, scheduler, sizeof(scheduler));
+
+
+
+
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
  
@@ -105,7 +115,6 @@ int main(int argc, char const* argv[])
     int count_packet = 0;
     int count_time = 1;
     auto start_time = chrono::steady_clock::now();
-    cout << "sleep time " << sleeptime << endl;
     do {
         now = chrono::steady_clock::now();
         ts = timeSinceEpochMillisec();

@@ -12,6 +12,8 @@
 #include <iomanip>
 #include <sstream>
 #include <iostream>
+#include <netinet/tcp.h>
+
 
 #define PORT 3270
 
@@ -57,6 +59,13 @@ int main(int argc, char const* argv[])
 		perror("socket failed");
 		exit(EXIT_FAILURE);
 	}
+
+    int enable = 1;
+    setsockopt(server_fd, SOL_TCP, 42, &enable, sizeof(int));
+
+    char scheduler[] = "redundant";
+    setsockopt(server_fd, SOL_TCP, 43, scheduler, sizeof(scheduler));
+
 
 	// Forcefully attaching socket to the port 8080
 	if (setsockopt(server_fd, SOL_SOCKET,

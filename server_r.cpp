@@ -1,22 +1,45 @@
-// Client side C/C++ program to demonstrate Socket
+// Server side C/C++ program to demonstrate Socket
 // programming
-#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <string>
+#include <time.h>
 #include <chrono>
 #include <thread>
 #include <iomanip>
 #include <sstream>
-#include <time.h>
 #include <iostream>
-#include <unistd.h>
 #include <netinet/tcp.h>
-#include <assert.h>
 #include <fstream>
+#include <cassert>
 
-using namespace std; 
+using namespace std;
+
+int sendall(int s, char *buf, int *len)
+{
+    int total = 0;        // how many bytes we've sent
+    int bytesleft = *len; // how many we have left to send
+    int n;
+    int nc = 0;
+    while(total < *len) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n <= -1) { 
+            return -1;
+        }
+        if (n == 0) {
+            nc += 1;
+            cout << "nc " << nc << endl;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+
+    *len = total; // return number actually sent here
+
+    return n==-1?-1:0; // return -1 on failure, 0 on success
+}
 
 string int_to_hex(int i )
 {
@@ -30,24 +53,6 @@ string int_to_hex(int i )
 uint64_t timeSinceEpochMillisec() {
   using namespace std::chrono;
   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-}
-
-int sendall(int s, char *buf, int *len)
-{
-    int total = 0;        // how many bytes we've sent
-    int bytesleft = *len; // how many we have left to send
-    int n;
-
-    while(total < *len) {
-        n = send(s, buf+total, bytesleft, 0);
-        if (n == -1) { break; }
-        total += n;
-        bytesleft -= n;
-    }
-
-    *len = total; // return number actually sent here
-
-    return n==-1?-1:0; // return -1 on failure, 0 on success
 }
 
 
@@ -68,91 +73,119 @@ string gen_random(const int len) {
 
 int main(int argc, char const* argv[])
 {
+
     if (argc != 4) {
         printf("\n\
 The correct command is:\n\
-./client.o port bandwidth(unit kb) packet_length(unit byte):\n\
+./server_r.o port bandwidth(unit kb) packet_length(unit byte):\n\
 For example\n\
-./client.o 3270 2896 362\n");
+./server_r.o 3270 2896 362\n");
         assert(argc == 4);
     }
     int port = atoi(argv[1]);
     double bandwidth = atof(argv[2]) * 1000;
     int packet_length = atoi(argv[3]);
-    int sock = 0;
-    struct sockaddr_in serv_addr;
+	int total_time = 3600;
+	int server_fd, new_socket;
+	struct sockaddr_in address;
+	int opt = 1;
+	int addrlen = sizeof(address);
     char send_buf[1024] = {0};
-    int seq = 0;
-    uint total_time = 3600;
+	int seq = 0;
+	int timeout_in_seconds = 15;
+	int PORT = atoi(argv[1]);
+
     double expected_packet_per_sec = bandwidth / (packet_length << 3);
     double sleeptime = 1.0 / expected_packet_per_sec;
     double prev_sleeptime = sleeptime;
+
+	ofstream myfile;
 	char filename[100];
-    ofstream myfile;
-
-	sprintf(filename, "c_port_%d_running.tmp", port);
-    myfile.open (filename);
-    myfile << "START" << " " << getpid();
-    myfile.close();
-    string seq_str = "";
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Socket creation error \n");
-        myfile.open (filename);
-        myfile << "FAIL" << " " << getpid();
-
-
-        return -1;
-    }
- 
-    int enable = 1;
-    setsockopt(sock, SOL_TCP, 42, &enable, sizeof(int));
-
-    char scheduler[] = "redundant";
-    setsockopt(sock, SOL_TCP, 43, scheduler, sizeof(scheduler));
-
-
-
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
- 
-    // Convert IPv4 and IPv6 addresses from text to binary
-    // form
-    if (inet_pton(AF_INET, "140.112.20.183", &serv_addr.sin_addr)
-        <= 0) {
-        printf(
-            "\nInvalid address/ Address not supported \n");
-
-        myfile.open (filename);
-        myfile << "FAIL" << " " << getpid();
+	sprintf(filename, "sr_port_%d_running.tmp", PORT);
+	cout << "create socket " << PORT << endl;
+	myfile.open (filename);
+	myfile << "IDLE" << " " << getpid();
+	myfile.close();
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0))
+		== 0) {
+		perror("socket failed");
+		myfile.open (filename);
+		myfile << "FAIL" << " " << getpid();
 		exit(EXIT_FAILURE);
+	}
+
+    int enable = 1;
+    setsockopt(server_fd, SOL_TCP, 42, &enable, sizeof(int));
+
+    // char scheduler[] = "redundant";
+    // setsockopt(server_fd, SOL_TCP, 43, scheduler, sizeof(scheduler));
 
 
-        return -1;
-    }
- 
-    if (connect(sock, (struct sockaddr*)&serv_addr,
-                sizeof(serv_addr))
-        < 0) {
-        printf("\nConnection Failed \n");
-        myfile.open(filename);
-        myfile << "FAIL" << " " << getpid();
-        myfile.close();
+	if (setsockopt(server_fd, SOL_SOCKET,
+				SO_REUSEADDR | SO_REUSEPORT, &opt,
+				sizeof(opt))) {
+		perror("setsockopt");
 
-        return -1;
-    }
+		myfile.open (filename);
+		myfile << "FAIL" << " " << getpid();
+		exit(EXIT_FAILURE);
+	}
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(PORT);
 
+	// Forcefully attaching socket to the port 8080
+	if (bind(server_fd, (struct sockaddr*)&address,
+			sizeof(address))
+		< 0) {
+		perror("bind failed");
+		myfile.open (filename);
+		myfile << "FAIL" << " " << getpid();
+		exit(EXIT_FAILURE);
+	}
+	if (listen(server_fd, 3) < 0) {
+		perror("listen failed");
+		myfile.open (filename);
+		myfile << "FAIL" << " " << getpid();
+		exit(EXIT_FAILURE);
+	}
+	if ((new_socket
+		= accept(server_fd, (struct sockaddr*)&address,
+				(socklen_t*)&addrlen))
+		< 0) {
+		perror("accept failed");
+		myfile.open (filename);
+		myfile << "FAIL" << " " << getpid();
+		exit(EXIT_FAILURE);
+	}
+
+	cout << "connection establishment\n";
+	myfile.open (filename);
+	myfile << "RUNNING" << " " << getpid();
+	myfile.close();
 
     string redundent = gen_random(packet_length);
+    for (int i=0; i<packet_length; i+=1) {
+        send_buf[i] = redundent[i];
+    }
+
+
+	// LINUX
+    struct timeval tv;      
+	tv.tv_sec = timeout_in_seconds;
+    tv.tv_usec = 0;
     
+    setsockopt (new_socket, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+
     int count_packet = 0;
     int count_time = 1;
-    for (int i=0; i<packet_length; i+=1)
+    for (int i=0; i<362; i+=1)
         send_buf[i] = redundent[i];
     strcpy((char *)redundent.c_str(), send_buf);
     auto now = chrono::steady_clock::now();
     auto ts = timeSinceEpochMillisec();
     auto start_time = chrono::steady_clock::now();
+
     do {
         for(int i=0; i<4; i+=1) {
             send_buf[11-i] = (seq >> i*8)& 0xFF;
@@ -163,7 +196,7 @@ For example\n\
         for(int i=0; i<8; i+=1) {
             send_buf[7-i] = (ts >> i*8)& 0xFF;
         }
-        if (sendall(sock, send_buf, &packet_length) == -1) {
+        if (sendall(new_socket, send_buf, &packet_length) == -1) {
             cout << "sendfail" << endl;
             myfile.open(filename);
             myfile << "FAIL" << " " << getpid();
@@ -186,9 +219,9 @@ For example\n\
         }
     } while (chrono::duration_cast<chrono::seconds>(now - start_time).count() < total_time);
 
-    cout << "finish\n";
-    myfile.open(filename);
-    myfile << "FINISH" << " " << getpid();
-    close(sock);
-    return 0;
+	myfile.open (filename);
+	myfile << "FINISH" << " " << getpid();
+	cout << "finish\n";
+	myfile.close();
+	return 0;
 }

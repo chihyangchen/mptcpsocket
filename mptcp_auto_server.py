@@ -40,7 +40,7 @@ pcap_path = "/home/wmnlab/D/pcap_data"
 ss_dir = "/home/wmnlab/D/ss"
 hostname = str(PORT) + ":"
 
-cong = 'reno'.encode()
+cong = 'bbr'.encode()
 exit_program = False
 
 now = dt.datetime.today()

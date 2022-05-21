@@ -213,7 +213,7 @@ For example\n\
             else
                 printf("%d\t[%d-%d]\t%g Mbps\n", port, count_time-1, count_time, 1.0*tx_bytes/1024/1024*8);
             count_time += 1;
-            sleeptime = (sleeptime +  prev_sleeptime * count_packet / expected_packet_per_sec) / 2;
+            sleeptime = (sleeptime * 0.5 + 1.5 *  prev_sleeptime * count_packet / expected_packet_per_sec) / 2;
             prev_sleeptime = sleeptime;
             count_packet = 0;
         }

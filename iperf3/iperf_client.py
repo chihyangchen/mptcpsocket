@@ -24,7 +24,7 @@ IP_PMTUDISC_PROBE =  3  # Ignore dst pmtu.
 TCP_CONGESTION = 13
 
 PORT = args.port1           # UL
-
+serverip = "140.112.20.183"
 thread_stop = False
 exit_program = False
 length_packet = 362
@@ -49,8 +49,8 @@ now = dt.datetime.today()
 n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
 
 pcapfile1 = "%s/CLIENT_DL_%s_%s.pcap"%(pcap_path, PORT, n)
-tcpproc1 =  subprocess.Popen(["tcpdump -i any net 140.112.20.183 -w %s &"%(pcapfile1)], shell=True, preexec_fn=os.setsid)
-socket_proc =  subprocess.Popen(["iperf3 -c 140.112.20.183 -p %d -b %dk -R -t 3600"%(PORT, bandwidth)], shell=True, preexec_fn=os.setsid)
+tcpproc1 =  subprocess.Popen(["tcpdump -i any net %s -w %s &"%(serverip, pcapfile1)], shell=True, preexec_fn=os.setsid)
+socket_proc =  subprocess.Popen(["iperf3 -c %s -p %d -b %dk -R -t 3600"%(serverip, PORT, bandwidth)], shell=True, preexec_fn=os.setsid)
 while True:
     try:
         time.sleep(1)

@@ -111,7 +111,8 @@ def transmision(stcp_list):
                 prev_transmit = i
                 prev_sleeptime = sleeptime
         except:
-            break    
+            break
+    thread_stop = True
     print("---transmision timeout---")
     print("transmit", i, "packets")
 

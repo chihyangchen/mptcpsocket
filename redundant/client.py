@@ -105,7 +105,11 @@ def transmision(stcp_list):
             i += 1
             time.sleep(sleeptime)
             if time.time()-start_time > count:
-                print("[%d-%d]"%(count-1, count), "transmit", i-prev_transmit)
+                transmit_bytes = (i-prev_transmit) * length_packet
+                if transmit_bytes <= 1024*1024:
+                    print("[%d-%d]"%(count-1, count), "%g kbps"%(transmit_bytes/1024*8))
+                else:
+                    print("[%d-%d]"%(count-1, count), "%g Mbps"%(transmit_bytes/1024/1024*8))
                 count += 1
                 sleeptime = prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) # adjust sleep time dynamically
                 prev_transmit = i

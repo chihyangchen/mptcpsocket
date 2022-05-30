@@ -38,7 +38,7 @@ DL_ports = np.arange(3271, 3271+2*num_ports, 2)
 thread_stop = False
 exit_program = False
 length_packet = 362
-bandwidth = 289.6*100
+bandwidth = 5000*1024
 total_time = 3600
 expected_packet_per_sec = bandwidth / (length_packet << 3)
 sleeptime = 1.0 / expected_packet_per_sec
@@ -116,32 +116,34 @@ def transmision(stcp_list):
     print("transmit", i, "packets")
 
 
-def receive(s_tcp):
+def receive(s_tcp, port):
     s_tcp.settimeout(10)
     print("wait for indata...")
-    i = 0
     start_time = time.time()
     count = 1
-    seq = 0
-    prev_capture = 0
-    capture = 0
-    prev_loss = 0
+    capture_bytes = 0
     global thread_stop
     global buffer
     buffer = queue.Queue()
     while not thread_stop:
         try:
             indata = s_tcp.recv(65535)
-            capture += len(indata) / 362
+            capture_bytes += len(indata)
             if time.time()-start_time > count:
-                print("[%d-%d]"%(count-1, count), "capture", capture)
+                if capture_bytes <= 1024*1024:
+                    print(port, "[%d-%d]"%(count-1, count), "%g kbps"%(capture_bytes/1024*8))
+                else:
+                    print(port, "[%d-%d]"%(count-1, count), "%gMbps" %(capture_bytes/1024/1024*8))
                 count += 1
-                capture = 0
+                capture_bytes = 0
         except Exception as inst:
             print("Error: ", inst)
             thread_stop = True
     thread_stop = True
-    print("[%d-%d]"%(count-1, count), "capture", capture, sep='\t')
+    if capture_bytes <= 1024*1024:
+        print(port, "[%d-%d]"%(count-1, count), "%g kbps"%(capture_bytes/1024*8))
+    else:
+        print(port, "[%d-%d]"%(count-1, count), "%gMbps" %(capture_bytes/1024/1024*8))
     print("---Experiment Complete---")
     print("STOP receiving")
 
@@ -223,7 +225,7 @@ while not exitprogram:
     transmision_thread = threading.Thread(target = transmision, args = (UL_tcp_list, ))
     recive_thread_list = []
     for i in range(num_ports):
-        recive_thread_list.append(threading.Thread(target = receive, args = (DL_tcp_list[i], )))
+        recive_thread_list.append(threading.Thread(target = receive, args = (DL_tcp_list[i], DL_ports[i])))
 
 
 

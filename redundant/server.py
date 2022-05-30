@@ -27,10 +27,10 @@ import signal
 import numpy as np
 
 parser = argparse.ArgumentParser()
+num_ports = 3
 
 TCP_CONGESTION = 13
 
-num_ports = 1
 UL_ports = np.arange(3270, 3270+2*num_ports, 2)
 DL_ports = np.arange(3271, 3271+2*num_ports, 2)
 
@@ -43,7 +43,7 @@ HOST = '0.0.0.0'
 thread_stop = False
 exit_program = False
 length_packet = 362
-bandwidth = 289.6*100
+bandwidth = 5000*1024
 total_time = 3600
 cong_algorithm = 'cubic'
 expected_packet_per_sec = bandwidth / (length_packet << 3)
@@ -112,15 +112,10 @@ def transmision(conn_list):
             thread_stop = True
             break    
     print("---transmision timeout---")
-    # ok = (0).to_bytes(1, 'big')
-    # redundent = os.urandom(length_packet-12-1)
-    # outdata = t + z + ok +redundent
-    # for i in range(len(conn_list)):
-    #     conn_list[i].sendall(outdata)
     print("transmit", i, "packets")
 
 
-def receive(conn):
+def receive(conn, port):
     conn.settimeout(10)
     print("wait for indata...")
     i = 0
@@ -128,23 +123,29 @@ def receive(conn):
     count = 1
     seq = 0
     prev_capture = 0
-    capture = 0
+    capture_bytes = 0
     prev_loss = 0
     global thread_stop
     global buffer
     while not thread_stop:
         try:
             indata = conn.recv(65535)
-            capture += len(indata) / 362
+            capture_bytes += len(indata)
             if time.time()-start_time > count:
-                print("[%d-%d]"%(count-1, count), "capture", capture)
+                if capture_bytes <= 1024*1024:
+                    print(port, "[%d-%d]"%(count-1, count), "%g kbps"%(capture_bytes/1024*8))
+                else:
+                    print(port, "[%d-%d]"%(count-1, count), "%gMbps" %(capture_bytes/1024/1024*8))
                 count += 1
-                capture = 0
+                capture_bytes = 0
         except Exception as inst:
             print("Error: ", inst)
             thread_stop = True
     thread_stop = True
-    print("[%d-%d]"%(count-1, count), "capture", capture, sep='\t')
+    if capture_bytes <= 1024*1024:
+        print(port, "[%d-%d]"%(count-1, count), "%g kbps"%(capture_bytes/1024*8))
+    else:
+        print(port, "[%d-%d]"%(count-1, count), "%gMbps" %(capture_bytes/1024/1024*8))
     print("---Experiment Complete---")
     print("STOP receiving")
 
@@ -244,7 +245,7 @@ while not exit_program:
     transmision_thread = threading.Thread(target = transmision, args = (DL_conn_list, ))
     recive_thread_list = []
     for i in range(num_ports):
-        recive_thread_list.append(threading.Thread(target = receive, args = (UL_conn_list[i], )))
+        recive_thread_list.append(threading.Thread(target = receive, args = (UL_conn_list[i], UL_ports[i])))
 
 
     try:

@@ -27,11 +27,6 @@ import signal
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-p1", "--port1", type=int,
-                    help="port to bind", default=3237)
-parser.add_argument("-p2", "--port2", type=int,
-                    help="port to bind", default=3238)
-args = parser.parse_args()
 
 TCP_CONGESTION = 13
 
@@ -57,7 +52,6 @@ prev_sleeptime = sleeptime
 pcap_path = "/home/wmnlab/D/pcap_data"
 ss_dir = "/home/wmnlab/D/ss"
 
-# hostname = str(PORT) + ":"
 
 cong = 'cubic'.encode()
 
@@ -176,9 +170,9 @@ while not exit_program:
     tcp_UL_proc = []
     tcp_DL_proc = []
     for p in UL_ports:
-        UL_pcapfiles.append("%s/UL_%s_%s.pcap"%(pcap_path, p, n))
+        UL_pcapfiles.append("%s/server_UL_%s_%s.pcap"%(pcap_path, p, n))
     for p in DL_ports:
-        DL_pcapfiles.append("%s/DL_%s_%s.pcap"%(pcap_path, p, n))
+        DL_pcapfiles.append("%s/server_DL_%s_%s.pcap"%(pcap_path, p, n))
 
     for p, pcapfile in zip(UL_ports, UL_pcapfiles):
         tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))

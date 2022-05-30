@@ -14,13 +14,7 @@ import subprocess
 import re
 import numpy as np
 
-HOST = '127.0.0.1'
-
-# f = open("port.txt", "r")
-# l = f.readline()
-# PORT = int(l)
-
-
+HOST = '140.112.20.183'
 
 def get_network_interface_list():
     pipe = subprocess.Popen('ifconfig', stdout=subprocess.PIPE, shell=True)

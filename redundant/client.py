@@ -14,14 +14,15 @@ import subprocess
 import re
 import numpy as np
 
-HOST = '140.112.20.183'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
                     help="port to bind", default=3270)
-
+parser.add_argument("-H", "--HOST", type=int,
+                    help="server ip address", default="140.112.20.183")
 args = parser.parse_args()
 
+HOST = args.HOST
 port = args.port
 
 
@@ -45,7 +46,7 @@ DL_ports = np.arange(port+1, port+1+2*num_ports, 2)
 
 thread_stop = False
 exit_program = False
-length_packet = 362
+length_packet = 1000
 bandwidth = 5000*1024
 total_time = 3600
 expected_packet_per_sec = bandwidth / (length_packet << 3)

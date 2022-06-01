@@ -36,6 +36,7 @@ parser.add_argument("-p", "--port", type=int,
 parser.add_argument("-d", "--num_device", type=int,
                     help="number of devices", default=2)
 
+
 args = parser.parse_args()
 
 port = args.port
@@ -52,7 +53,7 @@ HOST = '0.0.0.0'
 
 thread_stop = False
 exit_program = False
-length_packet = 362
+length_packet = 1000
 bandwidth = 5000*1024
 total_time = 3600
 cong_algorithm = 'cubic'

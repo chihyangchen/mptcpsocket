@@ -62,9 +62,10 @@ def get_ss(port):
         time.sleep(1)
     f.close()
 
-def connection_setup(host, port, result):
+def connection_setup(host, port, interface, result):
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s_tcp.setsockopt(socket.IPPROTO_TCP, TCP_CONGESTION, cong)
+    s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, ((interface)+'\0').encode())
     s_tcp.settimeout(10)
     s_tcp.connect((host, port))
 
@@ -158,6 +159,7 @@ if not os.path.exists(pcap_path):
 
 
 while not exitprogram:
+    get_network_interface_list
 
     try:
         x = input("Press Enter to start\n")
@@ -181,10 +183,10 @@ while not exitprogram:
             UL_pcapfiles.append("%s/client_DL_%s_%s.pcap"%(pcap_path, p, n))
 
         for p, pcapfile in zip(UL_ports, UL_pcapfiles):
-            tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))
+            tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
 
         for p, pcapfile in zip(DL_ports, DL_pcapfiles):
-            tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))
+            tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
 
         thread_list = []
         UL_result_list = []
@@ -198,10 +200,10 @@ while not exitprogram:
             DL_result_list.append([None])
 
         for i in range(len(UL_ports)):
-            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, UL_ports[i], UL_result_list[i])))
+            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, UL_ports[i], network_interface_list[i], UL_result_list[i])))
 
         for i in range(len(DL_ports)):
-            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, DL_ports[i], DL_result_list[i])))
+            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, DL_ports[i], network_interface_list[i], DL_result_list[i])))
         
         for i in range(len(thread_list)):
             thread_list[i].start()

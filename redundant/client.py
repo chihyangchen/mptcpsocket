@@ -18,7 +18,7 @@ import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
                     help="port to bind", default=3270)
-parser.add_argument("-H", "--HOST", type=int,
+parser.add_argument("-H", "--HOST", type=str,
                     help="server ip address", default="140.112.20.183")
 args = parser.parse_args()
 

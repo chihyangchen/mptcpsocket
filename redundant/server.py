@@ -61,7 +61,8 @@ expected_packet_per_sec = bandwidth / (length_packet << 3)
 sleeptime = 1.0 / expected_packet_per_sec
 prev_sleeptime = sleeptime
 pcap_path = "/home/wmnlab/D/pcap_data"
-ss_dir = "/home/wmnlab/D/ss"
+pcap_path = "./pcap_data"
+ss_dir = "./ss"
 
 
 cong = 'cubic'.encode()

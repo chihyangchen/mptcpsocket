@@ -16,6 +16,15 @@ import numpy as np
 
 HOST = '140.112.20.183'
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-p", "--port", type=int,
+                    help="port to bind", default=3270)
+
+args = parser.parse_args()
+
+port = args.port
+
+
 def get_network_interface_list():
     pipe = subprocess.Popen('ifconfig', stdout=subprocess.PIPE, shell=True)
     text = pipe.communicate()[0].decode()
@@ -23,7 +32,6 @@ def get_network_interface_list():
     network_interface_list = []
     for x in l:
         if r"RUNNING" in x and 'lo' not in x:
-            print(x[:x.find(':')])
             network_interface_list.append(x[:x.find(':')])
     network_interface_list = sorted(network_interface_list)
     return network_interface_list
@@ -31,8 +39,8 @@ network_interface_list = get_network_interface_list()
 print(network_interface_list)
 
 num_ports = len(network_interface_list)
-UL_ports = np.arange(3270, 3270+2*num_ports, 2)
-DL_ports = np.arange(3271, 3271+2*num_ports, 2)
+UL_ports = np.arange(port, port+2*num_ports, 2)
+DL_ports = np.arange(port+1, port+1+2*num_ports, 2)
 
 
 thread_stop = False

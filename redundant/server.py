@@ -27,12 +27,22 @@ import signal
 import numpy as np
 
 parser = argparse.ArgumentParser()
-num_ports = 3
 
 TCP_CONGESTION = 13
 
-UL_ports = np.arange(3270, 3270+2*num_ports, 2)
-DL_ports = np.arange(3271, 3271+2*num_ports, 2)
+parser = argparse.ArgumentParser()
+parser.add_argument("-p", "--port", type=int,
+                    help="port to bind", default=3270)
+parser.add_argument("-d", "--num_device", type=int,
+                    help="number of devices", default=2)
+
+args = parser.parse_args()
+
+port = args.port
+num_devices = args.num_device
+
+UL_ports = np.arange(port, port+2*num_devices, 2)
+DL_ports = np.arange(port+1, port+1+2*num_devices, 2)
 
 print("UL_ports", UL_ports)
 print("DL_ports", DL_ports)
@@ -59,7 +69,6 @@ def connection(host, port, result):
     print("host", host, "port", port, "result", result)
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    # s_tcp.setsockopt(socket.SOL_IP, IP_MTU_DISCOVER, IP_PMTUDISC_DO)
     s_tcp.setsockopt(socket.IPPROTO_TCP, TCP_CONGESTION, cong)
     s_tcp.bind((host, port))
     print((host, port), "wait for connection...")
@@ -105,9 +114,9 @@ def transmision(conn_list):
             if time.time()-start_time > count:
                 transmit_bytes = (i-prev_transmit) * length_packet
                 if transmit_bytes <= 1024*1024:
-                    print("[%d-%d]"%(count-1, count), "%g kbps"%(transmit_bytes/1024*8))
+                    print("[%d-%d]"%(count-1, count), "send" ,"%g kbps"%(transmit_bytes/1024*8))
                 else:
-                    print("[%d-%d]"%(count-1, count), "%g Mbps"%(transmit_bytes/1024/1024*8))
+                    print("[%d-%d]"%(count-1, count), "send" ,"%g Mbps"%(transmit_bytes/1024/1024*8))
                 count += 1
                 sleeptime = prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) # adjust sleep time dynamically
                 prev_transmit = i
@@ -192,13 +201,13 @@ while not exit_program:
         thread_list = []
         UL_result_list = []
         DL_result_list = []
-        for i in range(num_ports):
+        for i in range(num_devices):
             UL_result_list.append([None])
             DL_result_list.append([None])
-        UL_tcp_list = [None] * num_ports
-        UL_conn_list = [None] * num_ports
-        DL_tcp_list = [None] * num_ports
-        DL_conn_list = [None] * num_ports
+        UL_tcp_list = [None] * num_devices
+        UL_conn_list = [None] * num_devices
+        DL_tcp_list = [None] * num_devices
+        DL_conn_list = [None] * num_devices
         for i in range(len(UL_ports)):
             thread_list.append(threading.Thread(target = connection, args = (HOST, UL_ports[i], UL_result_list[i])))
 
@@ -211,7 +220,7 @@ while not exit_program:
         for i in range(len(thread_list)):
             thread_list[i].join()
 
-        for i in range(num_ports):
+        for i in range(num_devices):
             UL_tcp_list[i] = UL_result_list[i][0][0]
             UL_conn_list[i] = UL_result_list[i][0][1]
             DL_tcp_list[i] = DL_result_list[i][0][0]
@@ -241,14 +250,14 @@ while not exit_program:
         continue
 
 
-    for i in range(num_ports):
+    for i in range(num_devices):
         UL_conn_list[i].sendall(b"START")
         DL_conn_list[i].sendall(b"START")
     time.sleep(0.5)
     thread_stop = False
     transmision_thread = threading.Thread(target = transmision, args = (DL_conn_list, ))
     recive_thread_list = []
-    for i in range(num_ports):
+    for i in range(num_devices):
         recive_thread_list.append(threading.Thread(target = receive, args = (UL_conn_list[i], UL_ports[i])))
 
 
@@ -266,7 +275,7 @@ while not exit_program:
         print("finish")
     finally:
         thread_stop = True
-        for i in range(num_ports):
+        for i in range(num_devices):
             UL_conn_list[i].close()
             DL_conn_list[i].close()
             UL_tcp_list[i].close()

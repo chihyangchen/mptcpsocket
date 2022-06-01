@@ -19,7 +19,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
                     help="port to bind", default=3270)
 parser.add_argument("-H", "--HOST", type=str,
-                    help="server ip address", default="140.112.20.183")
+                    #help="server ip address", default="140.112.20.183")
+                    help="server ip address", default="210.65.88.213")
 args = parser.parse_args()
 
 HOST = args.HOST

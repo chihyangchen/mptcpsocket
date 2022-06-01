@@ -19,8 +19,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
                     help="port to bind", default=3270)
 parser.add_argument("-H", "--HOST", type=str,
-                    #help="server ip address", default="140.112.20.183")
-                    help="server ip address", default="210.65.88.213")
+                    help="server ip address", default="140.112.20.183")
+                    #help="server ip address", default="210.65.88.213")
 args = parser.parse_args()
 
 HOST = args.HOST
@@ -31,7 +31,7 @@ port = args.port
 num_ports = 1
 UL_ports = np.arange(port, port+2*num_ports, 2)
 DL_ports = np.arange(port+1, port+1+2*num_ports, 2)
-
+TCP_CONGESTION = 13
 
 thread_stop = False
 exit_program = False
@@ -59,7 +59,7 @@ def get_ss(port):
         time.sleep(1)
     f.close()
 
-def connection_setup(host, port, interface, result):
+def connection_setup(host, port, result):
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s_tcp.setsockopt(socket.IPPROTO_TCP, TCP_CONGESTION, cong)
     s_tcp.settimeout(10)
@@ -155,7 +155,6 @@ if not os.path.exists(pcap_path):
 
 
 while not exitprogram:
-    get_network_interface_list
 
     try:
         x = input("Press Enter to start\n")
@@ -196,10 +195,10 @@ while not exitprogram:
             DL_result_list.append([None])
 
         for i in range(len(UL_ports)):
-            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, UL_ports[i], network_interface_list[i], UL_result_list[i])))
+            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, UL_ports[i], UL_result_list[i])))
 
         for i in range(len(DL_ports)):
-            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, DL_ports[i], network_interface_list[i], DL_result_list[i])))
+            thread_list.append(threading.Thread(target = connection_setup, args = (HOST, DL_ports[i], DL_result_list[i])))
         
         for i in range(len(thread_list)):
             thread_list[i].start()

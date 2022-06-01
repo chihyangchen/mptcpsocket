@@ -53,7 +53,7 @@ HOST = '0.0.0.0'
 
 thread_stop = False
 exit_program = False
-length_packet = 1000
+length_packet = 400
 bandwidth = 5000*1024
 total_time = 3600
 cong_algorithm = 'cubic'
@@ -67,7 +67,6 @@ ss_dir = "/home/wmnlab/D/ss"
 cong = 'cubic'.encode()
 
 def connection(host, port, result):
-    print("host", host, "port", port, "result", result)
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s_tcp.setsockopt(socket.IPPROTO_TCP, TCP_CONGESTION, cong)

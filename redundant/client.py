@@ -62,7 +62,7 @@ ss_dir = "ss"
 def get_ss(port, type):
     x = ""
     if type == 't':
-        x = 'src'
+        x = 'dst'
     elif type == 'r':
         x = 'dst'
     now = dt.datetime.today()

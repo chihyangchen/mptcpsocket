@@ -83,7 +83,7 @@ def get_ss(port, type):
     if type == 't':
         x = 'src'
     elif type == 'r':
-        x = 'dst'
+        x = 'src'
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
     f = ""

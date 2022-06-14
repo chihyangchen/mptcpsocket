@@ -19,8 +19,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
                     help="port to bind", default=3270)
 parser.add_argument("-H", "--HOST", type=str,
-                    #help="server ip address", default="140.112.20.183")
-                    help="server ip address", default="210.65.88.213")
+                    help="server ip address", default="140.112.20.183")
+                    # help="server ip address", default="210.65.88.213")
 args = parser.parse_args()
 
 HOST = args.HOST
@@ -59,16 +59,31 @@ TCP_CONGESTION = 13   # defined in /usr/include/netinet/tcp.h
 cong = 'cubic'.encode()
 ss_dir = "ss"
 
-def get_ss(port):
+def get_ss(port, type):
+    x = ""
+    if type == 't':
+        x = 'src'
+    elif type == 'r':
+        x = 'dst'
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
-    f = open(os.path.join(ss_dir, n) + '.csv', 'a+')
+    f = ""
+    if type == 't':
+        f = open(os.path.join(ss_dir, "ss_client_UL_" + str(port) + '_' + n)+'.csv', 'a+')
+    elif type == 'r':
+        f = open(os.path.join(ss_dir, "ss_client_DL_" + str(port) + '_' + n)+'.csv', 'a+')
+    print(f)
     while not thread_stop:
-        proc = subprocess.Popen(["ss -it dst :%d"%(port)], stdout=subprocess.PIPE, shell=True)
-        line = proc.stdout.readline()
-        line = proc.stdout.readline()
-        line = proc.stdout.readline().decode().strip()
-        f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", line))+'\n')
+        proc = subprocess.Popen(["ss -ai %s :%d"%(x, port)], stdout=subprocess.PIPE, shell=True)
+
+        text = proc.communicate()[0].decode()
+        lines = text.split('\n')
+
+        for line in lines:
+            if "bytes_sent" in line:
+                l = line.strip()
+                f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", l))+'\n')
+                break
         time.sleep(1)
     f.close()
 
@@ -182,7 +197,7 @@ while not exitprogram:
             if len(n[i]) < 2:
                 n[i] = '0' + n[i]
         n = '-'.join(n)
-
+        get_ss_thread = []
         UL_pcapfiles = []
         DL_pcapfiles = []
         tcp_UL_proc = []
@@ -190,13 +205,17 @@ while not exitprogram:
         for p in UL_ports:
             UL_pcapfiles.append("%s/client_UL_%s_%s.pcap"%(pcap_path, p, n))
         for p in DL_ports:
-            UL_pcapfiles.append("%s/client_DL_%s_%s.pcap"%(pcap_path, p, n))
+            DL_pcapfiles.append("%s/client_DL_%s_%s.pcap"%(pcap_path, p, n))
 
         for p, pcapfile in zip(UL_ports, UL_pcapfiles):
             tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
+            get_ss_thread.append(threading.Thread(target = get_ss, args = (p, 't')))
 
         for p, pcapfile in zip(DL_ports, DL_pcapfiles):
             tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
+            get_ss_thread.append(threading.Thread(target = get_ss, args = (p, 'r')))
+
+        print("get_ss_thread", "len", len(get_ss_thread))
 
         thread_list = []
         UL_result_list = []
@@ -255,9 +274,19 @@ while not exitprogram:
         transmision_thread.start()
         for i in range(len(recive_thread_list)):
             recive_thread_list[i].start()
+
+        for i in range(len(get_ss_thread)):
+            get_ss_thread[i].start()
+
         transmision_thread.join()
+
+
         for i in range(len(recive_thread_list)):
             recive_thread_list[i].join()
+
+        for i in range(len(get_ss_thread)):
+            get_ss_thread[i].join()
+
 
         while transmision_thread.is_alive():
             x = input("Enter STOP to Stop\n")

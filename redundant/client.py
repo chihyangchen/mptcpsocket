@@ -48,7 +48,7 @@ DL_ports = np.arange(port+1, port+1+2*num_ports, 2)
 thread_stop = False
 exit_program = False
 length_packet = 400
-bandwidth = 5000*1024
+bandwidth = 5000*1024 # units kbps
 total_time = 3600
 expected_packet_per_sec = bandwidth / (length_packet << 3)
 sleeptime = 1.0 / expected_packet_per_sec
@@ -60,11 +60,6 @@ cong = 'cubic'.encode()
 ss_dir = "ss"
 
 def get_ss(port, type):
-    x = ""
-    if type == 't':
-        x = 'dst'
-    elif type == 'r':
-        x = 'dst'
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
     f = ""
@@ -74,7 +69,7 @@ def get_ss(port, type):
         f = open(os.path.join(ss_dir, "ss_client_DL_" + str(port) + '_' + n)+'.csv', 'a+')
     print(f)
     while not thread_stop:
-        proc = subprocess.Popen(["ss -ai %s :%d"%(x, port)], stdout=subprocess.PIPE, shell=True)
+        proc = subprocess.Popen(["ss -ai dst :%d"%(port)], stdout=subprocess.PIPE, shell=True)
 
         text = proc.communicate()[0].decode()
         lines = text.split('\n')
@@ -137,7 +132,7 @@ def transmision(stcp_list):
                 else:
                     print("[%d-%d]"%(count-1, count), "%g Mbps"%(transmit_bytes/1024/1024*8))
                 count += 1
-                sleeptime = prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) # adjust sleep time dynamically
+                sleeptime = (prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) + sleeptime) / 2
                 prev_transmit = i
                 prev_sleeptime = sleeptime
         except:
@@ -267,12 +262,6 @@ while not exitprogram:
         recive_thread_list.append(threading.Thread(target = receive, args = (DL_tcp_list[i], DL_ports[i])))
 
 
-
-    # t3 = threading.Thread(target=get_ss, args=(PORT, ))
-    # t4 = threading.Thread(target=get_ss, args=(PORT2, ))
-
-    # t3.start()
-    # t4.start()
     try:
         transmision_thread.start()
         for i in range(len(recive_thread_list)):
@@ -300,8 +289,6 @@ while not exitprogram:
                 thread_stop = True
                 exitprogram = True
         thread_stop = True
-        # t3.join()
-        # t4.join()
 
 
     except Exception as inst:

@@ -48,24 +48,27 @@ DL_ports = np.arange(port+1, port+1+2*num_devices, 2)
 print("UL_ports", UL_ports)
 print("DL_ports", DL_ports)
 
-HOST = '192.168.1.248'
 HOST = '0.0.0.0'
 
 thread_stop = False
 exit_program = False
+
+
+# PARAMETERS ##############################
 length_packet = 400
-bandwidth = 5000*1024
+bandwidth = 5000*1024 # units kbps
 total_time = 3600
-cong_algorithm = 'cubic'
-expected_packet_per_sec = bandwidth / (length_packet << 3)
-sleeptime = 1.0 / expected_packet_per_sec
-prev_sleeptime = sleeptime
 pcap_path = "/home/wmnlab/D/pcap_data"
 pcap_path = "./pcap_data"
 ss_dir = "./ss"
-
-
 cong = 'cubic'.encode()
+###########################################
+
+
+expected_packet_per_sec = bandwidth / (length_packet << 3)
+sleeptime = 1.0 / expected_packet_per_sec
+prev_sleeptime = sleeptime
+
 
 def connection(host, port, result):
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -79,11 +82,7 @@ def connection(host, port, result):
     result[0] = s_tcp, conn, tcp_addr
 
 def get_ss(port, type):
-    x = ""
-    if type == 't':
-        x = 'src'
-    elif type == 'r':
-        x = 'src'
+
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
     f = ""
@@ -94,7 +93,7 @@ def get_ss(port, type):
         f = open(os.path.join(ss_dir, "ss_server_UL_" + str(port) + '_' + n)+'.csv', 'a+')
     print(f)
     while not thread_stop:
-        proc = subprocess.Popen(["ss -ai %s :%d"%(x, port)], stdout=subprocess.PIPE, shell=True)
+        proc = subprocess.Popen(["ss -ai src :%d"%(port)], stdout=subprocess.PIPE, shell=True)
 
         text = proc.communicate()[0].decode()
         lines = text.split('\n')
@@ -135,7 +134,7 @@ def transmision(conn_list):
                 else:
                     print("[%d-%d]"%(count-1, count), "send" ,"%g Mbps"%(transmit_bytes/1024/1024*8))
                 count += 1
-                sleeptime = prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) # adjust sleep time dynamically
+                sleeptime = (prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) + sleeptime) / 2
                 prev_transmit = i
                 prev_sleeptime = sleeptime
         except:

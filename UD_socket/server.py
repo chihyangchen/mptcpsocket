@@ -2,17 +2,6 @@
 #!/usr/bin/env python3
 
 
-# pipe = Popen('ifconfig', stdout=PIPE, shell=True)
-# text = pipe.communicate()[0].decode()
-# l = text.split('\n')
-# network_interface_list = []
-# for x in l:
-#     if r"flags" in x and 'lo' not in x:
-#         print(x[:x.find(':')])
-#         network_interface_list.append(x[:x.find(':')])
-# network_interface_list = sorted(network_interface_list)
-# print(network_interface_list)
-# print()
 
 
 import socket
@@ -32,7 +21,7 @@ TCP_CONGESTION = 13
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
-                    help="port to bind", default=3270)
+                    help="port to bind", default=3250)
 parser.add_argument("-d", "--num_device", type=int,
                     help="number of devices", default=1)
 
@@ -48,23 +37,27 @@ DL_ports = np.arange(port+1, port+1+2*num_devices, 2)
 print("UL_ports", UL_ports)
 print("DL_ports", DL_ports)
 
-HOST = '192.168.1.248'
 HOST = '0.0.0.0'
+
 
 thread_stop = False
 exit_program = False
+
+# PARAMETERS ##################
 length_packet = 400
-bandwidth = 5000*1024
+bandwidth = 5000*1024 # unit kbps
 total_time = 3600
-cong_algorithm = 'cubic'
+pcap_path = "/home/wmnlab/D/pcap_data"
+pcap_path = "./pcap_data"
+ss_dir = "./ss"
+cong = 'cubic'.encode()
+##################################
+
+
 expected_packet_per_sec = bandwidth / (length_packet << 3)
 sleeptime = 1.0 / expected_packet_per_sec
 prev_sleeptime = sleeptime
-pcap_path = "/home/wmnlab/D/pcap_data"
-ss_dir = "/home/wmnlab/D/ss"
 
-
-cong = 'cubic'.encode()
 
 def connection(host, port, result):
     s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -77,18 +70,31 @@ def connection(host, port, result):
     print((host, port), "connection setup complete")
     result[0] = s_tcp, conn, tcp_addr
 
-def get_ss(port):
+def get_ss(port, type):
+
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
-    f = open(os.path.join(ss_dir, str(port) + '_' + n)+'.csv', 'a+')
+    f = ""
+
+    if type == 't':
+        f = open(os.path.join(ss_dir, "ss_server_DL_" + str(port) + '_' + n)+'.csv', 'a+')
+    elif type == 'r':
+        f = open(os.path.join(ss_dir, "ss_server_UL_" + str(port) + '_' + n)+'.csv', 'a+')
+    print(f)
     while not thread_stop:
-        proc = subprocess.Popen(["ss -ai dst :%d"%(port)], stdout=subprocess.PIPE, shell=True)
-        line = proc.stdout.readline()
-        line = proc.stdout.readline()
-        line = proc.stdout.readline().decode().strip()
-        f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", line))+'\n')
+        proc = subprocess.Popen(["ss -ai src :%d"%(port)], stdout=subprocess.PIPE, shell=True)
+
+        text = proc.communicate()[0].decode()
+        lines = text.split('\n')
+
+        for line in lines:
+            if "bytes_sent" in line:
+                l = line.strip()
+                f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", l))+'\n')
+                break
         time.sleep(1)
     f.close()
+
 
 def transmision(conn_list):
     print("start transmision")
@@ -118,7 +124,7 @@ def transmision(conn_list):
                 else:
                     print("[%d-%d]"%(count-1, count), "send" ,"%g Mbps"%(transmit_bytes/1024/1024*8))
                 count += 1
-                sleeptime = prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) # adjust sleep time dynamically
+                sleeptime = (prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) + sleeptime) / 2
                 prev_transmit = i
                 prev_sleeptime = sleeptime
         except:

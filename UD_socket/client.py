@@ -35,27 +35,43 @@ TCP_CONGESTION = 13
 
 thread_stop = False
 exit_program = False
+
+
+## PARAMETERS ###################
 length_packet = 400
-bandwidth = 5000*1024
+bandwidth = 5000*1024 # unit kbps
 total_time = 3600
-expected_packet_per_sec = bandwidth / (length_packet << 3)
-sleeptime = 1.0 / expected_packet_per_sec
-prev_sleeptime = sleeptime
 pcap_path = "pcapdir"
 exitprogram = False
 cong = 'cubic'.encode()
 ss_dir = "ss"
+#################################
 
-def get_ss(port):
+expected_packet_per_sec = bandwidth / (length_packet << 3)
+sleeptime = 1.0 / expected_packet_per_sec
+prev_sleeptime = sleeptime
+
+
+def get_ss(port, type):
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
-    f = open(os.path.join(ss_dir, n) + '.csv', 'a+')
+    f = ""
+    if type == 't':
+        f = open(os.path.join(ss_dir, "ss_client_UL_" + str(port) + '_' + n)+'.csv', 'a+')
+    elif type == 'r':
+        f = open(os.path.join(ss_dir, "ss_client_DL_" + str(port) + '_' + n)+'.csv', 'a+')
+    print(f)
     while not thread_stop:
-        proc = subprocess.Popen(["ss -it dst :%d"%(port)], stdout=subprocess.PIPE, shell=True)
-        line = proc.stdout.readline()
-        line = proc.stdout.readline()
-        line = proc.stdout.readline().decode().strip()
-        f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", line))+'\n')
+        proc = subprocess.Popen(["ss -ai dst :%d"%(port)], stdout=subprocess.PIPE, shell=True)
+
+        text = proc.communicate()[0].decode()
+        lines = text.split('\n')
+
+        for line in lines:
+            if "bytes_sent" in line:
+                l = line.strip()
+                f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", l))+'\n')
+                break
         time.sleep(1)
     f.close()
 
@@ -108,7 +124,7 @@ def transmision(stcp_list):
                 else:
                     print("[%d-%d]"%(count-1, count), "%g Mbps"%(transmit_bytes/1024/1024*8))
                 count += 1
-                sleeptime = prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) # adjust sleep time dynamically
+                sleeptime = (prev_sleeptime / expected_packet_per_sec * (i-prev_transmit) + sleeptime) / 2
                 prev_transmit = i
                 prev_sleeptime = sleeptime
         except:
@@ -231,11 +247,6 @@ while not exitprogram:
 
 
 
-    # t3 = threading.Thread(target=get_ss, args=(PORT, ))
-    # t4 = threading.Thread(target=get_ss, args=(PORT2, ))
-
-    # t3.start()
-    # t4.start()
     try:
         transmision_thread.start()
         for i in range(len(recive_thread_list)):
@@ -253,8 +264,6 @@ while not exitprogram:
                 thread_stop = True
                 exitprogram = True
         thread_stop = True
-        # t3.join()
-        # t4.join()
 
 
     except Exception as inst:

@@ -13,11 +13,11 @@ import argparse
 import subprocess
 import re
 import numpy as np
-
+import signal
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
-                    help="port to bind", default=3270)
+                    help="port to bind", default=3250)
 parser.add_argument("-H", "--HOST", type=str,
                     help="server ip address", default="140.112.20.183")
                     #help="server ip address", default="210.65.88.213")
@@ -43,7 +43,7 @@ bandwidth = 5000*1024 # unit kbps
 total_time = 3600
 pcap_path = "pcapdir"
 exitprogram = False
-cong = 'cubic'.encode()
+cong = 'reno'.encode()
 ss_dir = "ss"
 #################################
 
@@ -60,7 +60,7 @@ def get_ss(port, type):
         f = open(os.path.join(ss_dir, "ss_client_UL_" + str(port) + '_' + n)+'.csv', 'a+')
     elif type == 'r':
         f = open(os.path.join(ss_dir, "ss_client_DL_" + str(port) + '_' + n)+'.csv', 'a+')
-    print(f)
+    global thread_stop
     while not thread_stop:
         proc = subprocess.Popen(["ss -ai dst :%d"%(port)], stdout=subprocess.PIPE, shell=True)
 
@@ -186,18 +186,22 @@ while not exitprogram:
 
         UL_pcapfiles = []
         DL_pcapfiles = []
-        tcp_UL_proc = []
-        tcp_DL_proc = []
+        tcpdump_UL_proc = []
+        tcpdump_DL_proc = []
+        get_ss_thread = []
+
         for p in UL_ports:
             UL_pcapfiles.append("%s/client_UL_%s_%s.pcap"%(pcap_path, p, n))
         for p in DL_ports:
-            UL_pcapfiles.append("%s/client_DL_%s_%s.pcap"%(pcap_path, p, n))
+            DL_pcapfiles.append("%s/client_DL_%s_%s.pcap"%(pcap_path, p, n))
 
         for p, pcapfile in zip(UL_ports, UL_pcapfiles):
-            tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
+            tcpdump_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
+            get_ss_thread.append(threading.Thread(target = get_ss, args = (p, 't')))
 
         for p, pcapfile in zip(DL_ports, DL_pcapfiles):
-            tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
+            tcpdump_DL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,pcapfile)], shell=True, preexec_fn=os.setsid))
+            get_ss_thread.append(threading.Thread(target = get_ss, args = (p, 'r')))
 
         thread_list = []
         UL_result_list = []
@@ -235,7 +239,10 @@ while not exitprogram:
 
     except Exception as inst:
         print("Error: ", inst)
-        os.system("pkill tcpdump")
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_UL_proc[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_DL_proc[i].pid), signal.SIGTERM)
         continue
     thread_stop = False
 
@@ -251,9 +258,14 @@ while not exitprogram:
         transmision_thread.start()
         for i in range(len(recive_thread_list)):
             recive_thread_list[i].start()
+        for i in range(len(get_ss_thread)):
+            get_ss_thread[i].start()
         transmision_thread.join()
         for i in range(len(recive_thread_list)):
             recive_thread_list[i].join()
+
+
+
 
         while transmision_thread.is_alive():
             x = input("Enter STOP to Stop\n")
@@ -276,4 +288,7 @@ while not exitprogram:
         for i in range(num_ports):
             UL_tcp_list[i].close()
             DL_tcp_list[i].close()
-        os.system("killall -9 tcpdump")
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_UL_proc[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_DL_proc[i].pid), signal.SIGTERM)

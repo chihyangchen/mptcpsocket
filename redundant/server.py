@@ -106,8 +106,8 @@ def get_ss(port, type):
         time.sleep(1)
     f.close()
 
-def transmision(conn_list):
-    print("start transmision")
+def transmission(conn_list):
+    print("start transmission")
     i = 0
     prev_transmit = 0
     ok = (1).to_bytes(1, 'big')
@@ -140,7 +140,7 @@ def transmision(conn_list):
         except:
             thread_stop = True
             break    
-    print("---transmision timeout---")
+    print("---transmission timeout---")
     print("transmit", i, "packets")
 
 
@@ -236,7 +236,12 @@ while not exit_program:
             thread_list[i].start()
 
         for i in range(len(thread_list)):
+            get_ss_thread[i].start()
+
+        for i in range(len(thread_list)):
             thread_list[i].join()
+
+
 
         for i in range(num_devices):
             UL_tcp_list[i] = UL_result_list[i][0][0]
@@ -247,7 +252,13 @@ while not exit_program:
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt -> kill tcpdump")
-        os.system("killall -9 tcpdump")
+
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(UL_tcp_list[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(DL_tcp_list[i].pid), signal.SIGTERM)
+
+
         for pcapfile in UL_pcapfiles:
             subprocess.Popen(["rm %s"%(pcapfile)], shell=True)
         for pcapfile in DL_pcapfiles:
@@ -276,7 +287,7 @@ while not exit_program:
 
     time.sleep(0.5)
     thread_stop = False
-    transmision_thread = threading.Thread(target = transmision, args = (DL_conn_list, ))
+    transmision_thread = threading.Thread(target = transmission, args = (DL_conn_list, ))
     recive_thread_list = []
     for i in range(num_devices):
         recive_thread_list.append(threading.Thread(target = receive, args = (UL_conn_list[i], UL_ports[i])))
@@ -313,4 +324,7 @@ while not exit_program:
             DL_conn_list[i].close()
             UL_tcp_list[i].close()
             DL_tcp_list[i].close()
-        os.system("killall -9 tcpdump")
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(UL_tcp_list[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(DL_tcp_list[i].pid), signal.SIGTERM)

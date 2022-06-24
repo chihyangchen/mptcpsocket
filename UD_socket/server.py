@@ -50,7 +50,7 @@ total_time = 3600
 pcap_path = "/home/wmnlab/D/pcap_data"
 pcap_path = "./pcap_data"
 ss_dir = "./ss"
-cong = 'cubic'.encode()
+cong = 'reno'.encode()
 ##################################
 
 
@@ -71,6 +71,7 @@ def connection(host, port, result):
     result[0] = s_tcp, conn, tcp_addr
 
 def get_ss(port, type):
+    global thread_stop
 
     now = dt.datetime.today()
     n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
@@ -80,7 +81,6 @@ def get_ss(port, type):
         f = open(os.path.join(ss_dir, "ss_server_DL_" + str(port) + '_' + n)+'.csv', 'a+')
     elif type == 'r':
         f = open(os.path.join(ss_dir, "ss_server_UL_" + str(port) + '_' + n)+'.csv', 'a+')
-    print(f)
     while not thread_stop:
         proc = subprocess.Popen(["ss -ai src :%d"%(port)], stdout=subprocess.PIPE, shell=True)
 
@@ -94,7 +94,6 @@ def get_ss(port, type):
                 break
         time.sleep(1)
     f.close()
-
 
 def transmision(conn_list):
     print("start transmision")
@@ -187,18 +186,21 @@ while not exit_program:
     n = '-'.join(n)
     UL_pcapfiles = []
     DL_pcapfiles = []
-    tcp_UL_proc = []
-    tcp_DL_proc = []
+    tcpdump_UL_proc = []
+    tcpdump_DL_proc = []
+    get_ss_thread = []
     for p in UL_ports:
         UL_pcapfiles.append("%s/server_UL_%s_%s.pcap"%(pcap_path, p, n))
     for p in DL_ports:
         DL_pcapfiles.append("%s/server_DL_%s_%s.pcap"%(pcap_path, p, n))
 
     for p, pcapfile in zip(UL_ports, UL_pcapfiles):
-        tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))
+        tcpdump_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))
+        get_ss_thread.append(threading.Thread(target = get_ss, args = (p, 'r')))
 
     for p, pcapfile in zip(DL_ports, DL_pcapfiles):
-        tcp_UL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))
+        tcpdump_DL_proc.append(subprocess.Popen(["tcpdump -i any port %s -w %s &"%(p,  pcapfile)], shell=True, preexec_fn=os.setsid))
+        get_ss_thread.append(threading.Thread(target = get_ss, args = (p, 't')))
 
     time.sleep(1)
     try:
@@ -223,6 +225,8 @@ while not exit_program:
         for i in range(len(thread_list)):
             thread_list[i].start()
 
+
+
         for i in range(len(thread_list)):
             thread_list[i].join()
 
@@ -235,7 +239,10 @@ while not exit_program:
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt -> kill tcpdump")
-        os.system("killall -9 tcpdump")
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_UL_proc[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_DL_proc[i].pid), signal.SIGTERM)
         for pcapfile in UL_pcapfiles:
             subprocess.Popen(["rm %s"%(pcapfile)], shell=True)
         for pcapfile in DL_pcapfiles:
@@ -247,7 +254,10 @@ while not exit_program:
     except Exception as inst:
         print("Connection Error:", inst)
         print("KeyboardInterrupt -> kill tcpdump")
-        os.system("killall -9 tcpdump")
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(UL_tcp_list[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(DL_tcp_list[i].pid), signal.SIGTERM)
         for pcapfile in UL_pcapfiles:
             subprocess.Popen(["rm %s"%(pcapfile)], shell=True)
         for pcapfile in DL_pcapfiles:
@@ -269,11 +279,20 @@ while not exit_program:
 
     try:
         transmision_thread.start()
+
         for i in range(len(recive_thread_list)):
             recive_thread_list[i].start()
+
+        for i in range(len(get_ss_thread)):
+            get_ss_thread[i].start()
+
+
         transmision_thread.join()
         for i in range(len(recive_thread_list)):
             recive_thread_list[i].join()
+
+
+
     except KeyboardInterrupt:
         print("finish")
     except Exception as inst:
@@ -286,4 +305,7 @@ while not exit_program:
             DL_conn_list[i].close()
             UL_tcp_list[i].close()
             DL_tcp_list[i].close()
-        os.system("killall -9 tcpdump")
+        for i in range(len(UL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_UL_proc[i].pid), signal.SIGTERM)
+        for i in range(len(DL_tcp_list)):
+            os.killpg(os.getpgid(tcpdump_DL_proc[i].pid), signal.SIGTERM)

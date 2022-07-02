@@ -28,30 +28,36 @@ serverip = "140.112.20.183"
 thread_stop = False
 exit_program = False
 length_packet = 362
-bandwidth = 10000
+bandwidth = 0
 total_time = 3600
-cong_algorithm = 'cubic'
-expected_packet_per_sec = bandwidth / (length_packet << 3)
-sleeptime = 1.0 / expected_packet_per_sec
-prev_sleeptime = sleeptime
 pcap_path = "./pcapdata"
 
 if not os.path.exists(pcap_path):
     os.mkdir(pcap_path)
 
-ss_dir = "/home/wmnlab/D/ss"
+ss_dir = "ss"
 hostname = str(PORT) + ":"
 
 cong = 'reno'.encode()
 
 # tcpproc1 =  subprocess.Popen(["tcpdump -i any port %s -w %s &"%(PORT,  pcapfile1)], shell=True, preexec_fn=os.setsid)
 now = dt.datetime.today()
-n = '-'.join([str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]])
+
+n = [str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]]
+for i in range(len(n)-3, len(n)):
+    if len(n[i]) < 2:
+        n[i] = '0' + n[i]
+n = '-'.join(n)
 
 pcapfile1 = "%s/CLIENT_DL_%s_%s.pcap"%(pcap_path, PORT, n)
 tcpproc1 =  subprocess.Popen(["tcpdump -i any net %s -w %s &"%(serverip, pcapfile1)], shell=True, preexec_fn=os.setsid)
 socket_proc =  subprocess.Popen(["iperf3 -c %s -p %d -b %dk -R -t 3600"%(serverip, PORT, bandwidth)], shell=True, preexec_fn=os.setsid)
+
+
 while True:
+
+
+
     try:
         time.sleep(1)
     except KeyboardInterrupt:

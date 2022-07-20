@@ -1,19 +1,16 @@
-# from subprocess import Popen, PIPE
-#!/usr/bin/env python3
+"""
+    
+    Author: Jing-You, Yan
 
+    This script will send duplicated packet to all suflow. UL and DL at the same time.
+    You could change the PARAMETERS below.
 
-# pipe = Popen('ifconfig', stdout=PIPE, shell=True)
-# text = pipe.communicate()[0].decode()
-# l = text.split('\n')
-# network_interface_list = []
-# for x in l:
-#     if r"flags" in x and 'lo' not in x:
-#         print(x[:x.find(':')])
-#         network_interface_list.append(x[:x.find(':')])
-# network_interface_list = sorted(network_interface_list)
-# print(network_interface_list)
-# print()
+    Run:
+        $ python3 server.py -p Port -d NumOfDevice
+    ex:
+        $ python3 server.py -p 3270 -d 2
 
+"""
 
 import socket
 import time
@@ -34,7 +31,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--port", type=int,
                     help="port to bind", default=3270)
 parser.add_argument("-d", "--num_device", type=int,
-                    help="number of devices", default=2)
+                    help="number of devices, number of subflow", default=2)
 
 
 args = parser.parse_args()

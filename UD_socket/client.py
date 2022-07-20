@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
+"""
+    
+    Author: Jing-You, Yan
+
+    This script will create two sockets, UL and DL.
+    You could change the PARAMETERS below.
+
+    Run:
+        $ python3 client.py -p Port -H server_ip_address
+    ex:
+        $ python3 client.py -p 3270 -d 140.112.20.183
+
+"""
+
+
+
 import socket
 import time
 import threading

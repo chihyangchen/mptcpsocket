@@ -92,7 +92,7 @@ def get_ss(port, type):
         lines = text.split('\n')
 
         for line in lines:
-            if "bytes_sent" in line:
+            if "cwnd" in line:
                 l = line.strip()
                 f.write(",".join([str(dt.datetime.now())]+ re.split("[: \n\t]", l))+'\n')
                 break

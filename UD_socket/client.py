@@ -128,8 +128,8 @@ def transmision(stcp_list):
             t = time.time()
             t = int(t*1000).to_bytes(8, 'big')
             z = i.to_bytes(4, 'big')
-            redundent = os.urandom(length_packet-12-1)
-            outdata = t + z + ok +redundent
+            redundant = os.urandom(length_packet-12-1)
+            outdata = t + z + ok +redundant
             for j in range(len(stcp_list)):
                 stcp_list[j].sendall(outdata)
             i += 1
@@ -185,6 +185,8 @@ def receive(s_tcp, port):
 
 if not os.path.exists(pcap_path):
     os.system("mkdir %s"%(pcap_path))
+if not os.path.exists(ss_dir):
+    os.system("mkdir %s"%(ss_dir))
 
 
 while not exitprogram:

@@ -8,9 +8,9 @@
     This script will create two sockets, UL and DL.
     You could change the PARAMETERS below.
     Run:
-        $ python3 server.py -p Port -H server_ip_address
+        $ python3 server.py -p Port
     ex:
-        $ python3 server.py -p 3270 -d 140.112.20.183
+        $ python3 server.py -p 3270
 
 """
 

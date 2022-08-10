@@ -21,7 +21,7 @@ PORT = args.port1           # UL
 thread_stop = False
 exit_program = False
 length_packet = 362
-pcap_path = "/home/wmnlab/D/pcap_data"
+pcap_path = "."
 
 now = dt.datetime.today()
 n = [str(x) for x in[ now.year, now.month, now.day, now.hour, now.minute, now.second]]

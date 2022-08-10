@@ -12,7 +12,7 @@ import signal
 import subprocess
 
 
-pcap_path = "/home/wmnlab/D/video_streamming"
+pcap_path = "."
 PORT = 1935
 hostname = str(PORT) + ":"
 
